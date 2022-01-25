@@ -1,7 +1,7 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::UnorderedMap;
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{env, near_bindgen, setup_alloc};
+use near_sdk::{env, near_bindgen, setup_alloc, AccountId};
 
 setup_alloc!();
 
@@ -20,6 +20,7 @@ pub struct Pet {
   age: u64,
   breed: String,
   location: String,
+  adopter: Option<AccountId>,
 }
 
 impl Default for PetShop {
@@ -41,12 +42,18 @@ impl PetShop {
     breed: String,
     location: String,
   ) -> bool {
+    assert!(name.len() > 0, "Name is reqired.");
+    assert!(picture.len() > 0, "Image link is required.");
+    assert!(age > 0, "Age is reqired");
+    assert!(breed.len() > 0, "Breed is reqired");
+    assert!(location.len() > 0, "Location is reqired");
     let new_pet = Pet {
       name: name,
       picture: picture,
       age: age,
       breed: breed,
       location: location,
+      adopter: None,
     };
     let id = self.pets.len();
     self.pets.insert(&id, &new_pet);
@@ -54,17 +61,22 @@ impl PetShop {
   }
 
   pub fn adopt(&mut self, pet_id: u64) {
+    assert!(self.pets.get(&pet_id).is_some(), "Pet with such id not found");
     let adopter_id = env::predecessor_account_id();
+    let mut pet = self.pets.get(&pet_id).unwrap();
+    assert!(&pet.adopter.is_none(), "The pet is aleray adopted");
     self.adopters.insert(&adopter_id, &pet_id);
-    env::log(format!("{} adopted a pet (id: {})", adopter_id, pet_id).as_bytes());
+    pet.adopter.get_or_insert(adopter_id);
+  }
+
+  //Getters
+
+  pub fn get_pets(&self) -> Vec<(u64, Pet)> {
+    self.pets.iter().collect()
   }
 
   pub fn get_adopters(&self) -> Vec<(String, u64)> {
     self.adopters.iter().collect()
-  }
-
-  pub fn get_pets(&self) -> Vec<(u64, Pet)> {
-    self.pets.iter().collect()
   }
 }
 
@@ -114,6 +126,81 @@ mod tests {
   }
 
   #[test]
+  #[should_panic]
+  fn name_is_empty() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    contract.add_pet(
+      "".to_string(),
+      "picture".to_string(),
+      3,
+      "breed".to_string(),
+      "location".to_string(),
+    );
+  }
+
+  #[test]
+  #[should_panic]
+  fn picture_is_empty() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    contract.add_pet(
+      "name".to_string(),
+      "".to_string(),
+      3,
+      "breed".to_string(),
+      "location".to_string(),
+    );
+  }
+
+  #[test]
+  #[should_panic]
+  fn age_is_0() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    contract.add_pet(
+      "name".to_string(),
+      "picture".to_string(),
+      0,
+      "breed".to_string(),
+      "location".to_string(),
+    );
+  }
+
+  #[test]
+  #[should_panic]
+  fn breed_is_empty() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    contract.add_pet(
+      "name".to_string(),
+      "picture".to_string(),
+      3,
+      "".to_string(),
+      "location".to_string(),
+    );
+  }
+
+  #[test]
+  #[should_panic]
+  fn location_is_empty() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    contract.add_pet(
+      "name".to_string(),
+      "picture".to_string(),
+      3,
+      "breed".to_string(),
+      "".to_string(),
+    );
+  }
+
+  #[test]
   fn adopt_and_get_adopters() {
     let context = get_context(vec![], false);
     testing_env!(context);
@@ -130,5 +217,38 @@ mod tests {
     assert_eq!(1, adopters.len());
     assert_eq!("carol_near".to_string(), adopters[0].0);
     assert_eq!(0, adopters[0].1);
+  }
+
+  #[test]
+  #[should_panic]
+  fn cannot_adopt_nonexisting_pet() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    contract.add_pet(
+      "name".to_string(),
+      "picture".to_string(),
+      3,
+      "breed".to_string(),
+      "location".to_string(),
+    );
+    contract.adopt(10);
+  }
+
+  #[test]
+  #[should_panic]
+  fn cannot_adopt_if_already_adopted() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    contract.add_pet(
+      "name".to_string(),
+      "picture".to_string(),
+      3,
+      "breed".to_string(),
+      "location".to_string(),
+    );
+    contract.adopt(0);
+    contract.adopt(0);
   }
 }
