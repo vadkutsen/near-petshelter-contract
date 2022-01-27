@@ -9,7 +9,7 @@ setup_alloc!();
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct PetShop {
   pub pets: UnorderedMap<u64, Pet>,
-  pub adopters: UnorderedMap<String, u64>,
+  pub donations: u128,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
@@ -27,21 +27,21 @@ impl Default for PetShop {
   fn default() -> Self {
     Self {
       pets: UnorderedMap::new(b"a".to_vec()),
-      adopters: UnorderedMap::new(b"a".to_vec()),
+      donations: 0,
     }
+  }
+}
+
+impl Pet {
+  fn update_adopter(&mut self, adopter_id: AccountId) {
+      self.adopter = Some(adopter_id);
   }
 }
 
 #[near_bindgen]
 impl PetShop {
-  pub fn add_pet(
-    &mut self,
-    name: String,
-    picture: String,
-    age: u64,
-    breed: String,
-    location: String,
-  ) -> bool {
+
+  pub fn add_pet(&mut self, name: String, picture: String, age: u64, breed: String, location: String) -> bool {
     assert!(name.len() > 0, "Name is reqired.");
     assert!(picture.len() > 0, "Image link is required.");
     assert!(age > 0, "Age is reqired");
@@ -60,14 +60,26 @@ impl PetShop {
     true
   }
 
-  pub fn adopt(&mut self, pet_id: u64) {
-    assert!(self.pets.get(&pet_id).is_some(), "Pet with such id not found");
+  pub fn adopt(&mut self, pet_id: u64) -> bool {
     let adopter_id = env::predecessor_account_id();
-    let mut pet = self.pets.get(&pet_id).unwrap();
+    let mut pet = self.get_pet(pet_id);
     assert!(&pet.adopter.is_none(), "The pet is aleray adopted");
-    self.adopters.insert(&adopter_id, &pet_id);
-    pet.adopter.get_or_insert(adopter_id);
+    env::log(format!("Adding @{} as the pet {} adopter", &adopter_id, &pet_id).as_bytes());
+    pet.update_adopter(adopter_id);
+    self.pets.insert(&pet_id, &pet);
+    true
   }
+
+  #[payable]
+  pub fn donate(&mut self) {
+      let deposit = env::attached_deposit();
+      let donator_account_id: String = env::predecessor_account_id();
+      assert!(deposit > 0, "The amount of donation should be greater than 0");
+      self.donations += deposit;
+      env::log(format!("@{} donated {} yNEAR", donator_account_id, deposit).as_bytes());
+  }
+
+  // TODO: Implement withdraw method
 
   //Getters
 
@@ -75,8 +87,12 @@ impl PetShop {
     self.pets.iter().collect()
   }
 
-  pub fn get_adopters(&self) -> Vec<(String, u64)> {
-    self.adopters.iter().collect()
+  pub fn get_pet(&self, pet_id: u64) -> Pet {
+    self.pets.get(&pet_id).unwrap()
+  }
+
+  pub fn get_donations(&self) -> u128 {
+    self.donations
   }
 }
 
@@ -99,7 +115,7 @@ mod tests {
       account_balance: 0,
       account_locked_balance: 0,
       storage_usage: 0,
-      attached_deposit: 0,
+      attached_deposit: 1_000_000_000_000_000_000_000,
       prepaid_gas: 10u64.pow(18),
       random_seed: vec![0, 1, 2],
       is_view,
@@ -126,7 +142,7 @@ mod tests {
   }
 
   #[test]
-  #[should_panic]
+  #[should_panic(expected="Name is reqired.")]
   fn name_is_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
@@ -141,7 +157,7 @@ mod tests {
   }
 
   #[test]
-  #[should_panic]
+  #[should_panic(expected="Image link is required.")]
   fn picture_is_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
@@ -156,7 +172,7 @@ mod tests {
   }
 
   #[test]
-  #[should_panic]
+  #[should_panic(expected="Age is reqired")]
   fn age_is_0() {
     let context = get_context(vec![], false);
     testing_env!(context);
@@ -171,7 +187,7 @@ mod tests {
   }
 
   #[test]
-  #[should_panic]
+  #[should_panic(expected="Breed is reqired")]
   fn breed_is_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
@@ -186,7 +202,7 @@ mod tests {
   }
 
   #[test]
-  #[should_panic]
+  #[should_panic(expected="Location is reqired")]
   fn location_is_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
@@ -201,7 +217,7 @@ mod tests {
   }
 
   #[test]
-  fn adopt_and_get_adopters() {
+  fn adopt_and_get_pet() {
     let context = get_context(vec![], false);
     testing_env!(context);
     let mut contract = PetShop::default();
@@ -212,31 +228,15 @@ mod tests {
       "breed".to_string(),
       "location".to_string(),
     );
-    contract.adopt(0);
-    let adopters = contract.get_adopters();
-    assert_eq!(1, adopters.len());
-    assert_eq!("carol_near".to_string(), adopters[0].0);
-    assert_eq!(0, adopters[0].1);
+    let adopt = contract.adopt(0);
+    assert!(adopt);
+    let pet = contract.get_pet(0);
+    assert!(pet.adopter.is_some());
+    assert_eq!("carol_near".to_string(), pet.adopter.unwrap());
   }
 
   #[test]
-  #[should_panic]
-  fn cannot_adopt_nonexisting_pet() {
-    let context = get_context(vec![], false);
-    testing_env!(context);
-    let mut contract = PetShop::default();
-    contract.add_pet(
-      "name".to_string(),
-      "picture".to_string(),
-      3,
-      "breed".to_string(),
-      "location".to_string(),
-    );
-    contract.adopt(10);
-  }
-
-  #[test]
-  #[should_panic]
+  #[should_panic(expected="The pet is aleray adopted")]
   fn cannot_adopt_if_already_adopted() {
     let context = get_context(vec![], false);
     testing_env!(context);
@@ -250,5 +250,15 @@ mod tests {
     );
     contract.adopt(0);
     contract.adopt(0);
+  }
+
+  #[test]
+  fn donate() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    assert_eq!(contract.get_donations(), 0);
+    contract.donate();
+    assert_eq!(contract.get_donations(), 1_000_000_000_000_000_000_000);
   }
 }
