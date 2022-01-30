@@ -42,6 +42,9 @@ impl Pet {
 impl PetShop {
 
   pub fn add_pet(&mut self, name: String, picture: String, age: u64, breed: String, location: String) -> bool {
+    let signer_account_id = env::signer_account_id();
+    let current_account_id = env::current_account_id();
+    assert_eq!(signer_account_id, current_account_id, "Only owner can add pets");
     assert!(name.len() > 0, "Name is reqired.");
     assert!(picture.len() > 0, "Image link is required.");
     assert!(age > 0, "Age is reqired");
@@ -75,7 +78,9 @@ impl PetShop {
   pub fn donate(&mut self) {
       let deposit = env::attached_deposit();
       let donator_account_id: String = env::predecessor_account_id();
+      let current_account_id: String = env::current_account_id();
       assert!(deposit > 0, "The amount of donation should be greater than 0");
+      assert_ne!(current_account_id, donator_account_id, "You cannot donate to yourself");
       self.donations += deposit;
       env::log(format!("@{} donated {} yNEAR", donator_account_id, deposit).as_bytes());
   }
@@ -104,9 +109,9 @@ mod tests {
   fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
     VMContext {
       current_account_id: "alice_near".to_string(),
-      signer_account_id: "bob_near".to_string(),
+      signer_account_id: "alice_near".to_string(),
       signer_account_pk: vec![0, 1, 2],
-      predecessor_account_id: "carol_near".to_string(),
+      predecessor_account_id: "alice_near".to_string(),
       input,
       block_index: 0,
       block_timestamp: 0,
@@ -127,6 +132,25 @@ mod tests {
     let context = get_context(vec![], false);
     testing_env!(context);
     let mut contract = PetShop::default();
+    let add = contract.add_pet(
+      "name".to_string(),
+      "picture".to_string(),
+      3,
+      "breed".to_string(),
+      "location".to_string(),
+    );
+    let pets = contract.get_pets();
+    assert!(add);
+    assert_eq!(1, pets.len());
+  }
+
+  #[test]
+  #[should_panic(expected="Only owner can add pets")]
+  fn cannot_add_pet_if_not_contract_owner() {
+    let mut contract = PetShop::default();
+    let mut context = get_context(vec![], false);
+    context.signer_account_id = "bob_near".to_string();
+    testing_env!(context);
     let add = contract.add_pet(
       "name".to_string(),
       "picture".to_string(),
@@ -229,7 +253,7 @@ mod tests {
     let adopt = contract.adopt(0);
     assert!(adopt);
     let pet = contract.get_pet(0);
-    assert_eq!("carol_near".to_string(), pet.adopter.unwrap());
+    assert_eq!("alice_near".to_string(), pet.adopter.unwrap());
   }
 
   #[test]
@@ -251,11 +275,21 @@ mod tests {
 
   #[test]
   fn donate() {
-    let context = get_context(vec![], false);
+    let mut context = get_context(vec![], false);
+    context.predecessor_account_id = "bob_near".to_string();
     testing_env!(context);
     let mut contract = PetShop::default();
     assert_eq!(contract.get_donations(), 0);
     contract.donate();
     assert_eq!(contract.get_donations(), 1_000_000_000_000_000_000_000);
+  }
+
+  #[test]
+  #[should_panic(expected="You cannot donate to yourself")]
+  fn cannot_donate_as_the_contract_owner() {
+    let context = get_context(vec![], false);
+    testing_env!(context);
+    let mut contract = PetShop::default();
+    contract.donate();
   }
 }
