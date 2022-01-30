@@ -7,13 +7,17 @@ setup_alloc!();
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
+/// Contract structure is represented here
 pub struct PetShop {
+  /// The contact must have pets collection
   pub pets: UnorderedMap<u64, Pet>,
+  /// and donations amount
   pub donations: u128,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
+/// Pet structure is defined here
 pub struct Pet {
   name: String,
   picture: String,
@@ -22,7 +26,7 @@ pub struct Pet {
   location: String,
   adopter: Option<AccountId>,
 }
-
+/// Default implementation of the contract
 impl Default for PetShop {
   fn default() -> Self {
     Self {
@@ -32,15 +36,18 @@ impl Default for PetShop {
   }
 }
 
+/// Implementation of the Pet structure
 impl Pet {
+  /// The function used for updating adopter on a Pet structure
   fn update_adopter(&mut self, adopter_id: AccountId) {
       self.adopter = Some(adopter_id);
   }
 }
 
 #[near_bindgen]
+/// The contract implementation
 impl PetShop {
-
+  /// Function for adding pets
   pub fn add_pet(&mut self, name: String, picture: String, age: u64, breed: String, location: String) -> bool {
     let signer_account_id = env::signer_account_id();
     let current_account_id = env::current_account_id();
@@ -63,7 +70,7 @@ impl PetShop {
     self.pets.insert(&id, &new_pet);
     true
   }
-
+  /// Function for adopting a pet
   pub fn adopt(&mut self, pet_id: u64) -> bool {
     let adopter_id = env::predecessor_account_id();
     let mut pet = self.get_pet(pet_id);
@@ -75,6 +82,7 @@ impl PetShop {
   }
 
   #[payable]
+  /// Function for donation
   pub fn donate(&mut self) {
       let deposit = env::attached_deposit();
       let donator_account_id: String = env::predecessor_account_id();
@@ -85,16 +93,19 @@ impl PetShop {
       env::log(format!("@{} donated {} yNEAR", donator_account_id, deposit).as_bytes());
   }
 
-  //Getters
-
+  /// Getters
+  ///
+  /// Returns all pets
   pub fn get_pets(&self) -> Vec<(u64, Pet)> {
     self.pets.iter().collect()
   }
 
+  /// Returns a pet by id
   pub fn get_pet(&self, pet_id: u64) -> Pet {
     self.pets.get(&pet_id).unwrap()
   }
 
+  /// Returns donations amount
   pub fn get_donations(&self) -> u128 {
     self.donations
   }
