@@ -1,5 +1,5 @@
-Pet Shop Contract
-=================
+Pet Shelter Contract
+====================
 
 This repository includes NEAR smart contract written in Rust programming language.
 
