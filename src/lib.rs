@@ -56,6 +56,7 @@ impl PetShop {
       adopter: None,
     };
     let id = self.pets.len();
+    env::log(format!("Adding pet with id {} ", id).as_bytes());
     self.pets.insert(&id, &new_pet);
     true
   }
@@ -79,8 +80,6 @@ impl PetShop {
       env::log(format!("@{} donated {} yNEAR", donator_account_id, deposit).as_bytes());
   }
 
-  // TODO: Implement withdraw method
-
   //Getters
 
   pub fn get_pets(&self) -> Vec<(u64, Pet)> {
@@ -102,7 +101,6 @@ mod tests {
   use near_sdk::MockedBlockchain;
   use near_sdk::{testing_env, VMContext};
 
-  // mock the context for testing, notice "signer_account_id" that was accessed above from env::
   fn get_context(input: Vec<u8>, is_view: bool) -> VMContext {
     VMContext {
       current_account_id: "alice_near".to_string(),
@@ -231,7 +229,6 @@ mod tests {
     let adopt = contract.adopt(0);
     assert!(adopt);
     let pet = contract.get_pet(0);
-    assert!(pet.adopter.is_some());
     assert_eq!("carol_near".to_string(), pet.adopter.unwrap());
   }
 
