@@ -2,7 +2,8 @@ Pet Shelter Contract
 ====================
 
 This repository includes NEAR smart contract written in Rust programming language.
-The smart contract allows to add pets, adopt pets and donate Near
+The smart contract allows to add pets, adopt pets and donate Near.
+UI repository for the project can be found here: https://github.com/vadkutsen/near-petshelter-ui
 
 
 Step 0: Install near-cli
