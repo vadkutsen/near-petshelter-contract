@@ -8,7 +8,7 @@ setup_alloc!();
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize)]
 /// Contract structure is represented here
-pub struct PetShop {
+pub struct PetShelter {
   /// The contact must have pets collection
   pub pets: UnorderedMap<u64, Pet>,
   /// and donations amount
@@ -27,7 +27,7 @@ pub struct Pet {
   adopter: Option<AccountId>,
 }
 /// Default implementation of the contract
-impl Default for PetShop {
+impl Default for PetShelter {
   fn default() -> Self {
     Self {
       pets: UnorderedMap::new(b"a".to_vec()),
@@ -46,7 +46,7 @@ impl Pet {
 
 #[near_bindgen]
 /// The contract implementation
-impl PetShop {
+impl PetShelter {
   /// Function for adding pets
   pub fn add_pet(&mut self, name: String, picture: String, age: u64, breed: String, location: String) -> bool {
     let signer_account_id = env::signer_account_id();
@@ -142,7 +142,7 @@ mod tests {
   fn add_then_get_pets() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     let add = contract.add_pet(
       "name".to_string(),
       "picture".to_string(),
@@ -158,7 +158,7 @@ mod tests {
   #[test]
   #[should_panic(expected="Only owner can add pets")]
   fn cannot_add_pet_if_not_contract_owner() {
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     let mut context = get_context(vec![], false);
     context.signer_account_id = "bob_near".to_string();
     testing_env!(context);
@@ -179,7 +179,7 @@ mod tests {
   fn name_is_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     contract.add_pet(
       "".to_string(),
       "picture".to_string(),
@@ -194,7 +194,7 @@ mod tests {
   fn picture_is_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     contract.add_pet(
       "name".to_string(),
       "".to_string(),
@@ -209,7 +209,7 @@ mod tests {
   fn age_is_0() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     contract.add_pet(
       "name".to_string(),
       "picture".to_string(),
@@ -224,7 +224,7 @@ mod tests {
   fn breed_is_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     contract.add_pet(
       "name".to_string(),
       "picture".to_string(),
@@ -239,7 +239,7 @@ mod tests {
   fn location_is_empty() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     contract.add_pet(
       "name".to_string(),
       "picture".to_string(),
@@ -253,7 +253,7 @@ mod tests {
   fn adopt_and_get_pet() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     contract.add_pet(
       "name".to_string(),
       "picture".to_string(),
@@ -272,7 +272,7 @@ mod tests {
   fn cannot_adopt_if_already_adopted() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     contract.add_pet(
       "name".to_string(),
       "picture".to_string(),
@@ -289,7 +289,7 @@ mod tests {
     let mut context = get_context(vec![], false);
     context.predecessor_account_id = "bob_near".to_string();
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     assert_eq!(contract.get_donations(), 0);
     contract.donate();
     assert_eq!(contract.get_donations(), 1_000_000_000_000_000_000_000);
@@ -300,7 +300,7 @@ mod tests {
   fn cannot_donate_as_the_contract_owner() {
     let context = get_context(vec![], false);
     testing_env!(context);
-    let mut contract = PetShop::default();
+    let mut contract = PetShelter::default();
     contract.donate();
   }
 }
