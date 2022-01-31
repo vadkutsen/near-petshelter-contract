@@ -2,6 +2,7 @@ Pet Shelter Contract
 ====================
 
 This repository includes NEAR smart contract written in Rust programming language.
+The smart contract allows to add pets, adopt pets and donate Near
 
 
 Step 0: Install near-cli
@@ -35,7 +36,7 @@ Step 2: Make sure the contract works as expected - run tests
 
 You can easily test the smart contract code using cargo:
 
-    cargo test -- --nocapture
+    cargo test
 
 
 Step 3: Build the contract
@@ -51,11 +52,11 @@ Step 4: Deploy!
 
 For development purposes you can use `dev-deploy` command and your smart contract will be deployed to the live NEAR TestNet with a throwaway account:
 
-    near dev-deploy --wasmFile target/wasm32-unknown-unknown/release/YOUR-CONTRACT-NAME.wasm
+    near dev-deploy --wasmFile target/wasm32-unknown-unknown/release/YOUR_CONTRACT_NAME.wasm
 
  When you're ready to make it permanent, here's how:
 
-    near deploy --wasmFile target/wasm32-unknown-unknown/release/YOUR-CONTRACT-NAME.wasm --accountId YOUR_ACCOUNT_HERE
+    near deploy --wasmFile target/wasm32-unknown-unknown/release/YOUR_CONTRACT_NAME.wasm --accountId YOUR_ACCOUNT_HERE
 
 
   [NEAR accounts]: https://docs.near.org/docs/concepts/account
